@@ -3,7 +3,6 @@ from flask_pymongo import PyMongo
 from flask_cors import CORS
 from bson.json_util import dumps
 from bson.objectid import ObjectId
-import mongoapp as mongoapp
 
 app = Flask(__name__)
 CORS(app)
@@ -29,22 +28,30 @@ def insert_vers():
                 resp = jsonify('Verse added successfully')
                 resp.status_code = 200
                 return resp
-            except: return jsonify('Bad Request')
+            except: return jsonify('Error on Insert')
 
-    else: return jsonify('No data')
+    elif isinstance(request.json, list):
+        _json = request.json
 
-    """ elif isinstance(request.json, list):
-        client = mongoapp.connection()
-        coll = client["test_collection"]
-    
         try:
-            _ids = mongoapp.create_many(coll, request.json)
+            for doc in _json:
+                _author = doc['autor']
+                _text = doc['texto']
 
+                if _author and _text:
+                    _id = mongo.db.test_collection.insert({
+                        'autor': _author,
+                        'texto': _text
+                    })
+            
             resp = jsonify('Verses added successfully')
             resp.status_code = 200
             return resp #str(db_response.inserted_ids)
+        except: jsonify('Error on Insert Many: Verify if the data is a JSON Array')
 
-        except: return jsonify('Bad Request: Verify if the data is a JSON Array') """
+    else: return jsonify('No data received')
+
+    
 
 @app.route('/list', methods=['GET'])
 def list_vers():
@@ -64,7 +71,7 @@ def select_vers(id):
 def delete_verse(id):
     mongo.db.test_collection.delete_one({'_id': ObjectId(id)})
 
-    resp = jsonify('User deleted successfully')
+    resp = jsonify('Verse deleted successfully')
     resp.status_code = 200
     return resp
 
