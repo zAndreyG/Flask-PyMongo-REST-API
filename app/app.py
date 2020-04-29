@@ -1,20 +1,20 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
-from flask_cors import CORS
+from flask_cors import CORS  #For Windows
 from bson.json_util import dumps
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)  #For Windows
 app.secret_key = "secretkey"
 
-mongoDev = PyMongo(app, uri="mongodb://andrey:mongopass@cluster0-shard-00-00-ccvwf.mongodb.net:27017,cluster0-shard-00-01-ccvwf.mongodb.net:27017,cluster0-shard-00-02-ccvwf.mongodb.net:27017/testDev?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin&retryWrites=true&w=majority")
-mongoProd = PyMongo(app, uri="mongodb://andrey:mongopass@cluster0-shard-00-00-ccvwf.mongodb.net:27017,cluster0-shard-00-01-ccvwf.mongodb.net:27017,cluster0-shard-00-02-ccvwf.mongodb.net:27017/testProd?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin&retryWrites=true&w=majority")
+mongoDev = PyMongo(app, uri="mongodb://andrey:mongopass@cluster0-shard-00-00-ccvwf.mongodb.net:27017,cluster0-shard-00-01-ccvwf.mongodb.net:27017,cluster0-shard-00-02-ccvwf.mongodb.net:27017/bdDev?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin&retryWrites=true&w=majority")
+mongoProd = PyMongo(app, uri="mongodb://andrey:mongopass@cluster0-shard-00-00-ccvwf.mongodb.net:27017,cluster0-shard-00-01-ccvwf.mongodb.net:27017,cluster0-shard-00-02-ccvwf.mongodb.net:27017/bdProd?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin&retryWrites=true&w=majority")
 
 # ======================================  DEV  ====================================== #
 
 @app.route('/dev/create', methods=['POST'])
-def insert_vers_dev():
+def insert_dev():
     if isinstance(request.json, list) == False:
         _json = request.json
         _author = _json['author']
@@ -22,77 +22,80 @@ def insert_vers_dev():
 
         if _author and _text:
             try:
-                _id = mongoDev.db.test_collection.insert({
+                _id = mongoDev.db.quotes.insert_one({
                     'author': _author,
                     'text': _text
                 })
 
-                resp = jsonify('Verse added successfully')
+                resp = jsonify(
+                    _id = str(_id.inserted_id),
+                    success = 'Quote added successfully'
+                )
                 resp.status_code = 200
                 return resp
-            except: return jsonify('Error on Insert')
+            except: return jsonify(Error = 'Verify the data content')
 
     elif isinstance(request.json, list):
+        idList = []
         _json = request.json
 
         try:
-            for doc in _json:
-                _author = doc['author']
-                _text = doc['text']
+            _ids = mongoDev.db.quotes.insert_many(_json)
 
-                if _author and _text:
-                    _id = mongoDev.db.test_collection.insert({
-                        'author': _author,
-                        'text': _text
-                    })
+            for _id in _ids.inserted_ids:
+                idList.append(str(_id))
             
-            resp = jsonify('Verses added successfully')
+            resp = jsonify(
+                _ids = idList,
+                success = 'Quotes added successfully'
+            )
             resp.status_code = 200
-            return resp #str(db_response.inserted_ids)
-        except: jsonify('Error on Insert Many: Verify if the data is a JSON Array')
+            return resp
+        except: return jsonify(Error = 'Verify the data content')
+        
 
-    else: return jsonify('No data received')
+    else: return jsonify(Error = 'No data received')
 
 @app.route('/dev/list', methods=['GET'])
-def list_vers_dev():
-    verses = mongoDev.db.test_collection.find()
+def list_dev():
+    quotes = mongoDev.db.quotes.find()
 
-    resp = dumps(verses)
+    resp = dumps(quotes)
     return resp
 
-@app.route('/dev/verse/<id>', methods=['GET'])
-def select_vers_dev(id):
-    verse = mongoDev.db.test_collection.find_one({'_id': ObjectId(id)})
+@app.route('/dev/quote/<id>', methods=['GET'])
+def select_dev(id):
+    quote = mongoDev.db.quotes.find_one({'_id': ObjectId(id)})
 
-    resp = dumps(verse)
+    resp = dumps(quote)
     return resp
 
 @app.route('/dev/delete/<id>', methods=['DELETE'])
-def delete_verse_dev(id):
-    mongoDev.db.test_collection.delete_one({'_id': ObjectId(id)})
+def delete_dev(id):
+    mongoDev.db.quotes.delete_one({'_id': ObjectId(id)})
 
-    resp = jsonify('Verse deleted successfully')
+    resp = jsonify('Quote deleted successfully')
     resp.status_code = 200
     return resp
 
 @app.route('/dev/update/<id>', methods=['PUT'])
-def update_vers_dev(id):
+def update_dev(id):
     _id = id
     _json = request.json
     _author = _json['author']
     _text = _json['text']
 
     if _author and _text:
-        mongoDev.db.test_collection.update_one({'_id': ObjectId(_id['$oid']) if '$oid' in _id else ObjectId(_id)}, {'$set': {'author': _author, 'text': _text}})
+        mongoDev.db.quotes.update_one({'_id': ObjectId(_id['$oid']) if '$oid' in _id else ObjectId(_id)}, {'$set': {'author': _author, 'text': _text}})
 
-        resp = jsonify('Verse updated successfully')
+        resp = jsonify('Quote updated successfully')
         resp.status_code = 200
         return resp
 
 # ======================================  PROD  ====================================== #
 
 @app.route('/prod/create', methods=['POST'])
-def insert_vers():
+def insert_prod():
     if isinstance(request.json, list) == False:
         _json = request.json
         _author = _json['author']
@@ -100,70 +103,73 @@ def insert_vers():
 
         if _author and _text:
             try:
-                _id = mongoProd.db.test_collection.insert({
+                _id = mongoProd.db.quotes.insert_one({
                     'author': _author,
                     'text': _text
                 })
 
-                resp = jsonify('Verse added successfully')
+                resp = jsonify(
+                    _id = str(_id.inserted_id),
+                    success = 'Quote added successfully'
+                )
                 resp.status_code = 200
                 return resp
-            except: return jsonify('Error on Insert')
+            except: return jsonify(Error = 'Verify the data content')
 
     elif isinstance(request.json, list):
+        idList = []
         _json = request.json
 
         try:
-            for doc in _json:
-                _author = doc['author']
-                _text = doc['text']
+            _ids = mongoProd.db.quotes.insert_many(_json)
 
-                if _author and _text:
-                    _id = mongoProd.db.test_collection.insert({
-                        'author': _author,
-                        'text': _text
-                    })
+            for _id in _ids.inserted_ids:
+                idList.append(str(_id))
             
-            resp = jsonify('Verses added successfully')
+            resp = jsonify(
+                _ids = idList,
+                success = 'Quotes added successfully'
+            )
             resp.status_code = 200
-            return resp #str(db_response.inserted_ids)
-        except: jsonify('Error on Insert Many: Verify if the data is a JSON Array')
+            return resp
+        except: return jsonify(Error = 'Verify the data content')
+        
 
-    else: return jsonify('No data received')
+    else: return jsonify(Error = 'No data received')
 
 @app.route('/prod/list', methods=['GET'])
-def list_vers():
-    verses = mongoProd.db.test_collection.find()
+def list_prod():
+    quotes = mongoProd.db.quotes.find()
 
-    resp = dumps(verses)
+    resp = dumps(quotes)
     return resp
 
-@app.route('/prod/verse/<id>', methods=['GET'])
-def select_vers(id):
-    verse = mongoProd.db.test_collection.find_one({'_id': ObjectId(id)})
+@app.route('/prod/quote/<id>', methods=['GET'])
+def select_prod(id):
+    quote = mongoProd.db.quotes.find_one({'_id': ObjectId(id)})
 
-    resp = dumps(verse)
+    resp = dumps(quote)
     return resp
 
 @app.route('/prod/delete/<id>', methods=['DELETE'])
-def delete_verse(id):
-    mongoProd.db.test_collection.delete_one({'_id': ObjectId(id)})
+def delete_prod(id):
+    mongoProd.db.quotes.delete_one({'_id': ObjectId(id)})
 
-    resp = jsonify('Verse deleted successfully')
+    resp = jsonify('Quote deleted successfully')
     resp.status_code = 200
     return resp
 
 @app.route('/prod/update/<id>', methods=['PUT'])
-def update_vers(id):
+def update_prod(id):
     _id = id
     _json = request.json
     _author = _json['author']
     _text = _json['text']
 
     if _author and _text:
-        mongoProd.db.test_collection.update_one({'_id': ObjectId(_id['$oid']) if '$oid' in _id else ObjectId(_id)}, {'$set': {'author': _author, 'text': _text}})
+        mongoProd.db.quotes.update_one({'_id': ObjectId(_id['$oid']) if '$oid' in _id else ObjectId(_id)}, {'$set': {'author': _author, 'text': _text}})
 
-        resp = jsonify('Verse updated successfully')
+        resp = jsonify('Quote updated successfully')
         resp.status_code = 200
         return resp
 
